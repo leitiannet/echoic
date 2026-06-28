@@ -97,4 +97,43 @@ class Settings(BaseSettings):
     llm: LLMConfig = LLMConfig()
 
 
-settings = Settings()
+# ── Load settings ───────────────────────────────────────────────────────────
+
+
+def _is_macos() -> bool:
+    import platform
+    return platform.system() == "Darwin"
+
+
+def _cuda_available() -> bool:
+    try:
+        import torch
+
+        return torch.cuda.is_available()
+    except ImportError:
+        return False
+
+
+def _resolve_device(requested: str) -> str:
+    device = requested.lower().strip()
+
+    if device == "mps" and not _is_macos():
+        return "cpu"
+
+    if device == "cuda" and not _cuda_available():
+        return "cpu"
+
+    return device
+
+
+def _load_settings() -> Settings:
+    s = Settings()
+    s.asr.whisperx.device = _resolve_device(s.asr.whisperx.device)
+    if s.asr.whisperx.device == "mps":
+        s.asr.whisperx.device = "cpu"
+    s.alignment.wav2vec2.device = _resolve_device(s.alignment.wav2vec2.device)
+    s.scoring.phoneme.device = _resolve_device(s.scoring.phoneme.device)
+    return s
+
+
+settings = _load_settings()
