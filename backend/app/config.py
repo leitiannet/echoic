@@ -82,11 +82,13 @@ class StorageConfig(BaseModel):
 # ── Top-level settings ────────────────────────────────────────────────────────
 
 class Settings(BaseSettings):
+    # 固定名称 model_config，值为 SettingsConfigDict()
     model_config = SettingsConfigDict(
-        env_file=".env",
+        extra="ignore",  # 忽略 .env 文件中第三方库的变量
+        env_file=".env",  # 指定 .env 文件路径
         env_nested_delimiter="__",  # e.g. ASR__BACKEND=whisperx
     )
-
+    # 定义配置字段
     database_url: str = "postgresql://echoic:echoic@localhost:5432/echoic"
     cors_origins: list[str] = ["http://localhost:5173"]
 
@@ -125,8 +127,14 @@ def _resolve_device(requested: str) -> str:
 
     return device
 
+# 加载 .env 文件到 os.environ , 用于第三方库（huggingface_hub, phonemizer）
+def _load_dotenv() -> None:
+    from dotenv import load_dotenv
+    load_dotenv(".env", override=False)
+
 
 def _load_settings() -> Settings:
+    _load_dotenv()
     s = Settings()
     s.asr.whisperx.device = _resolve_device(s.asr.whisperx.device)
     if s.asr.whisperx.device == "mps":
