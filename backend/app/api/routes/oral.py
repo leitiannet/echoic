@@ -30,7 +30,7 @@ def _recording_key(filename: str) -> str:
     suffix = Path(filename).suffix or ".webm"
     return f"oral/{uuid4().hex}{suffix}"
 
-
+# 生成题目（不落库）
 @router.post("/questions/generate", response_model=OralQuestionResponse)
 async def generate_question(
     question_type: str = Query(...),
@@ -43,6 +43,7 @@ async def generate_question(
         raise HTTPException(status_code=400, detail=f"Unknown question type: {question_type}")
     if difficulty not in DIFFICULTIES:
         raise HTTPException(status_code=400, detail=f"Difficulty must be one of: {', '.join(DIFFICULTIES)}")
+    # 调用 LLM 生成题目
     result = llm.generate_question(question_type, language, difficulty, topic)
     if not result.get("prompt"):
         raise HTTPException(status_code=502, detail="LLM failed to generate a question")
@@ -52,6 +53,7 @@ async def generate_question(
     )
 
 
+# 提交练习（上传录音、发音评分、 LLM 内容评分、落库）
 @router.post("/attempts", response_model=OralAttemptResponse)
 async def submit_attempt(
     question_type: str = Form(...),
@@ -60,19 +62,20 @@ async def submit_attempt(
     question_difficulty: str | None = Form(None),
     question_reference: str | None = Form(None),
     timer_secs: int | None = Form(None),
-    file: UploadFile = File(...),
+    file: UploadFile = File(...), # 上传录音
     db: Session = Depends(get_db),
     storage: StorageService = Depends(get_storage_service),
     scoring: ScoringService = Depends(get_scoring_service),
     llm: LLMService = Depends(get_llm_service),
 ):
+    # 保存录音
     key = _recording_key(file.filename or "recording.bin")
     storage.save(await file.read(), key)
     recording_path = storage.get_absolute_path(key)
 
     alignment = get_alignment_service(question_language)
     asr = get_asr_service(question_language)
-
+    # 创建口语练习模型
     attempt = OralAttempt(
         question_type=question_type,
         question_language=question_language,
@@ -85,25 +88,30 @@ async def submit_attempt(
     )
 
     if question_type == "read_aloud" and question_reference:
+        # 对齐
         aligned_words = alignment.align(recording_path, question_reference)
+        # 评分
         result = scoring.score(recording_path, question_reference, aligned_words, language=question_language)
         attempt.accuracy_score = result.accuracy_score
         attempt.fluency_score = result.fluency_score
         attempt.completeness_score = result.completeness_score
         attempt.word_scores = [ws.model_dump() for ws in result.word_scores]
     else:
+        # 转录
         sentences = asr.transcribe(recording_path)
         transcript = " ".join(s.text for s in sentences).strip()
         attempt.transcription = transcript
 
         if transcript:
+            # 对齐
             aligned_words = alignment.align(recording_path, transcript)
+            # 评分
             result = scoring.score(recording_path, transcript, aligned_words, language=question_language)
             attempt.accuracy_score = result.accuracy_score
             attempt.fluency_score = result.fluency_score
             attempt.completeness_score = result.completeness_score
             attempt.word_scores = [ws.model_dump() for ws in result.word_scores]
-
+        # 调用 LLM 内容评分
         llm_result = llm.score_oral_response(
             question_type=question_type,
             prompt=question_prompt,
@@ -113,13 +121,13 @@ async def submit_attempt(
         attempt.llm_score = llm_result.get("score")
         attempt.llm_feedback = llm_result.get("feedback")
         attempt.llm_highlights = llm_result.get("highlights")
-
+    # 落库
     db.add(attempt)
     db.flush()
     db.refresh(attempt)
     return attempt
 
-
+# 查询练习列表
 @router.get("/attempts", response_model=list[OralAttemptSummary])
 def list_attempts(
     question_type: str | None = Query(None),
@@ -131,7 +139,7 @@ def list_attempts(
         q = q.filter(OralAttempt.question_type == question_type)
     return q.order_by(OralAttempt.created_at.desc()).limit(limit).all()
 
-
+# 查询练习详情
 @router.get("/attempts/{attempt_id}", response_model=OralAttemptResponse)
 def get_attempt(attempt_id: int, db: Session = Depends(get_db)):
     attempt = db.get(OralAttempt, attempt_id)
@@ -139,7 +147,7 @@ def get_attempt(attempt_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Attempt not found")
     return attempt
 
-
+# 回放练习录音
 @router.get("/attempts/{attempt_id}/stream")
 def stream_attempt(attempt_id: int, db: Session = Depends(get_db)):
     attempt = db.get(OralAttempt, attempt_id)
@@ -147,4 +155,5 @@ def stream_attempt(attempt_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Attempt not found")
     storage = get_storage_service(attempt.storage_backend)
     path = storage.get_absolute_path(attempt.recording_path)
+    # 返回录音文件
     return FileResponse(path)

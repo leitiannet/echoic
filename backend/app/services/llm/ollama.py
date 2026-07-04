@@ -39,14 +39,16 @@ class OllamaLLMService(LLMService):
             timeout=60.0,
         )
         resp.raise_for_status()
+        # 从 Ollama 响应中取出 message.content ，并去除首尾空格
         return resp.json()["message"]["content"].strip()
 
+    # 生成题目（口语练习用）
     def generate_question(
         self,
-        question_type: str,
-        language: str,
-        difficulty: str = "intermediate",
-        topic: str | None = None,
+        question_type: str,                 # 题目类型
+        language: str,                      # 题目语言
+        difficulty: str = "intermediate",   # 题目难度
+        topic: str | None = None,           # 题目主题
     ) -> dict:
         from app.services.llm.openai import OpenAILLMService
         topic_hint = f" The topic should relate to: {topic}." if topic else ""
@@ -93,21 +95,24 @@ class OllamaLLMService(LLMService):
                 {"role": "system", "content": system},
                 {"role": "user", "content": user_msg},
             ])
+            # 将 JSON 字符串转换为字典
             return json.loads(raw)
         except Exception:
             return {"prompt": "", "reference_text": None}
 
+    # 内容评分（口语练习用）
     def score_oral_response(
         self,
-        question_type: str,
-        prompt: str,
-        transcription: str,
-        context: str | None = None,
-        reply_lang: str = "zh-CN",
+        question_type: str,         # 题目类型
+        prompt: str,                # 题目提示
+        transcription: str,         # 转录内容
+        context: str | None = None, # 额外上下文
+        reply_lang: str = "zh-CN",  # 回复语言
     ) -> dict:
         from app.services.llm.openai import REPLY_LANG_NAMES
         reply = REPLY_LANG_NAMES.get(reply_lang, reply_lang)
         context_block = f"\nAdditional context: {context}" if context else ""
+        # 评分标准
         rubrics = {
             "situational": (
                 "- Grammar of the response (40 pts)\n"
@@ -153,7 +158,12 @@ class OllamaLLMService(LLMService):
         except Exception:
             return {"score": 50, "feedback": "Scoring service unavailable.", "highlights": []}
 
-    def analyze(self, text: str, reply_lang: str = "zh-CN", source_lang: str = "en") -> str:
+    # 分析句子（跟读练习用）
+    def analyze(self, 
+        text: str,                   # 文本
+        reply_lang: str = "zh-CN",   # 回复语言
+        source_lang: str = "en",     # 源文语言
+     ) -> str:
         reply = REPLY_LANG_NAMES.get(reply_lang, reply_lang)
         source = SOURCE_LANG_NAMES.get(source_lang, source_lang)
         system = (

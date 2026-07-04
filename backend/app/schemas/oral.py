@@ -3,12 +3,12 @@ from pydantic import BaseModel, ConfigDict
 
 from app.schemas.practice import WordScore
 
-
+# 口语题目响应
 class OralQuestionResponse(BaseModel):
     prompt: str
     reference_text: str | None
 
-
+# 口语练习响应
 class OralAttemptResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,7 +29,7 @@ class OralAttemptResponse(BaseModel):
     timer_secs: int | None
     created_at: datetime
 
-
+# 口语练习摘要
 class OralAttemptSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

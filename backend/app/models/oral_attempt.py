@@ -3,10 +3,11 @@ from sqlalchemy import Integer, String, Float, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 
-
+# 口语练习模型
 class OralAttempt(Base):
+    # 表名
     __tablename__ = "oral_attempts"
-
+    # 字段
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     question_type: Mapped[str] = mapped_column(String)
     question_language: Mapped[str] = mapped_column(String)
