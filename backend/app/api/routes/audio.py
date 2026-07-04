@@ -27,7 +27,14 @@ router = APIRouter()
 
 
 async def _download_url(url: str) -> bytes:
-    async with httpx.AsyncClient(follow_redirects=True, timeout=300.0) as client:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; Echoic/1.0)",
+        "Accept": "*/*",
+    }
+    host = urlparse(url).netloc
+    if "voanews" in host:
+        headers["Referer"] = "https://learningenglish.voanews.com/"
+    async with httpx.AsyncClient(follow_redirects=True, timeout=300.0, headers=headers) as client:
         async with client.stream("GET", url) as response:
             response.raise_for_status()
             return await response.aread()
