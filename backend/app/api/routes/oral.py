@@ -20,12 +20,13 @@ from app.services.llm.base import LLMService
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
 
+# 口语练习路由（路由前缀：/api/oral ）
 router = APIRouter()
 
 QUESTION_TYPES = {"read_aloud", "situational", "monologue"}
 DIFFICULTIES = {"beginner", "intermediate", "advanced"}
 
-
+# 生成录音文件名
 def _recording_key(filename: str) -> str:
     suffix = Path(filename).suffix or ".webm"
     return f"oral/{uuid4().hex}{suffix}"

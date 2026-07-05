@@ -79,7 +79,7 @@ async def _fetch_program(program: dict) -> list[GalleryEpisode]:
     logger.warning("Failed to fetch BBC program %s after 3 attempts: %s", program["id"], last_exc)
     return []
 
-
+# BBC 内容提供者
 class BBCProvider(ContentProvider):
     source = "bbc"
     source_label = "BBC Learning English"

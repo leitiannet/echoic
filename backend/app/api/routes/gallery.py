@@ -6,15 +6,19 @@ from app.services.gallery.base import GalleryEpisode
 from app.services.gallery.voa import VOAProvider, PROGRAMS as VOA_PROGRAMS
 from app.services.gallery.bbc import BBCProvider, PROGRAMS as BBC_PROGRAMS
 
+# 内容广场路由（路由前缀：/api/gallery ）
 router = APIRouter()
 
+# 内容提供者列表
 _PROVIDERS = [VOAProvider(), BBCProvider()]
 
+# 内容来源列表
 _SOURCES = [
     {"id": p.source, "label": p.source_label}
     for p in _PROVIDERS
 ]
 
+# 节目元数据
 _PROGRAMS = [
     {"id": prog["id"], "name": prog["name"], "level": prog["level"], "source": "voa"}
     for prog in VOA_PROGRAMS
@@ -23,7 +27,7 @@ _PROGRAMS = [
     for prog in BBC_PROGRAMS
 ]
 
-
+# 获取内容广场列表
 @router.get("/")
 async def list_gallery(
     source: str | None = Query(None),

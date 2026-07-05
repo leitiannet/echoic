@@ -6,7 +6,7 @@ from app.services.llm.base import LLMService
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
 
-
+# 获取语音识别服务
 @lru_cache(maxsize=None)
 def get_asr_service(language: str | None = None) -> ASRService:
     match settings.asr.backend:
@@ -26,7 +26,7 @@ def get_asr_service(language: str | None = None) -> ASRService:
         case _:
             raise ValueError(f"Unknown ASR backend: {settings.asr.backend}")
 
-
+# 获取对齐服务
 @lru_cache(maxsize=None)
 def get_alignment_service(language: str | None = None) -> AlignmentService:
     match settings.alignment.backend:
@@ -44,7 +44,7 @@ def get_alignment_service(language: str | None = None) -> AlignmentService:
         case _:
             raise ValueError(f"Unknown alignment backend: {settings.alignment.backend}")
 
-
+# 获取评分服务
 @lru_cache
 def get_scoring_service() -> ScoringService:
     match settings.scoring.backend:
@@ -54,7 +54,7 @@ def get_scoring_service() -> ScoringService:
         case _:
             raise ValueError(f"Unknown scoring backend: {settings.scoring.backend}")
 
-
+# 获取大语音模型服务
 @lru_cache
 def get_llm_service() -> LLMService:
     match settings.llm.backend:
@@ -67,7 +67,7 @@ def get_llm_service() -> LLMService:
         case _:
             raise ValueError(f"Unknown LLM backend: {settings.llm.backend}")
 
-
+# 获取存储服务
 @lru_cache
 def get_storage_service(backend: str = "") -> StorageService:
     """

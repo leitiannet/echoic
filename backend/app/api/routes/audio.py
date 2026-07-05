@@ -23,9 +23,10 @@ from app.services.llm.base import LLMService
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
 
+# 音频素材路由（路由前缀：/api/audio ）
 router = APIRouter()
 
-
+# 下载远程音频 URL
 async def _download_url(url: str) -> bytes:
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; Echoic/1.0)",
@@ -39,29 +40,31 @@ async def _download_url(url: str) -> bytes:
             response.raise_for_status()
             return await response.aread()
 
-
+# 生成音频文件存储键（使用 uuid4 生成唯一标识，并添加后缀）
 def _audio_key(filename: str, *, compressed: bool = False) -> str:
     suffix = ".mp3" if compressed else Path(filename).suffix
     return f"audio/{uuid4().hex}{suffix}"
 
-
+# 压缩音频文件（使用 ffmpeg 压缩为 64 kbps mono MP3 ，删除原始文件）
 def _compress_audio(storage: "StorageService", key: str) -> str:
     """Re-encode stored file as 64 kbps mono MP3. Returns new key."""
     src = storage.get_absolute_path(key)
     new_key = _audio_key("compressed.mp3", compressed=True)
     dst = storage.get_absolute_path(new_key)
+    # 使用 ffmpeg 重编码
     subprocess.run(
         ["ffmpeg", "-y", "-i", str(src), "-ac", "1", "-ab", "64k", str(dst)],
         check=True,
         capture_output=True,
     )
     try:
+        # 删除原始文件
         storage.delete(key)
     except Exception:
         pass
     return new_key
 
-
+# 持久化音频文件
 def _persist_audio_file(
     db: Session,
     *,
@@ -86,7 +89,7 @@ def _persist_audio_file(
     db.refresh(audio_file)
     return audio_file
 
-
+# 上传本地音频文件
 @router.post("/upload", response_model=AudioFileResponse)
 async def upload_audio(
     file: UploadFile = File(...),
@@ -96,23 +99,28 @@ async def upload_audio(
     asr: ASRService = Depends(get_asr_service),
     storage: StorageService = Depends(get_storage_service),
 ):
+    # 生成音频文件存储键
     key = _audio_key(file.filename or "upload.bin")
+    # 保存音频文件
     storage.save(await file.read(), key)
+    # 识别音频文件
     sentences = asr.transcribe(storage.get_absolute_path(key))
+    # 压缩音频文件
     if compress:
         key = _compress_audio(storage, key)
     title = Path(file.filename or "upload").stem or "upload"
+    # 持久化音频文件
     return _persist_audio_file(
         db,
         title=title,
-        source_type="upload",
+        source_type="upload", # 上传类型
         key=key,
         sentences=sentences,
         language=settings.asr.whisperx.language,
         collection_id=collection_id,
     )
 
-
+# 导入远程音频 URL
 @router.post("/from-url")
 async def import_from_url(
     payload: AudioFileCreate,
@@ -131,6 +139,7 @@ async def import_from_url(
         try:
             yield event({"step": "downloading"})
             try:
+                # 下载远程音频 URL
                 audio_bytes = await _download_url(payload.url)
             except httpx.HTTPError as e:
                 yield event({"step": "error", "message": str(e)})
@@ -139,8 +148,9 @@ async def import_from_url(
             yield event({"step": "saving"})
             filename = Path(urlparse(payload.url).path).name or "imported.mp3"
             key = _audio_key(filename)
+            # 保存音频文件
             storage.save(audio_bytes, key)
-
+            # 压缩音频文件
             if compress:
                 yield event({"step": "compressing"})
                 key = await asyncio.to_thread(_compress_audio, storage, key)
@@ -150,8 +160,12 @@ async def import_from_url(
 
             title = payload.title or Path(filename).stem or urlparse(payload.url).hostname or "imported"
             audio_file = _persist_audio_file(
-                db, title=title, source_type="url", key=key,
-                sentences=sentences, language=settings.asr.whisperx.language,
+                db, 
+                title=title, 
+                source_type="url", # 远程 URL 类型
+                key=key,
+                sentences=sentences, 
+                language=settings.asr.whisperx.language,
                 collection_id=payload.collection_id,
             )
             result = AudioFileResponse.model_validate(audio_file)
@@ -161,7 +175,7 @@ async def import_from_url(
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
-
+# 获取音频文件列表
 @router.get("/", response_model=list[AudioFileResponse])
 async def list_audio_files(db: Session = Depends(get_db)):
     from sqlalchemy import func as sa_func
@@ -180,7 +194,7 @@ async def list_audio_files(db: Session = Depends(get_db)):
         result.append(data)
     return result
 
-
+# 获取音频文件详情
 @router.get("/{audio_file_id}", response_model=AudioFileResponse)
 async def get_audio_file(audio_file_id: int, db: Session = Depends(get_db)):
     from sqlalchemy import func as sa_func
@@ -200,21 +214,21 @@ async def get_audio_file(audio_file_id: int, db: Session = Depends(get_db)):
             s.practice_count = count_map.get(s.index, 0)
     return response
 
-
+# 获取句子字典
 def _get_sentence_dict(audio_file: AudioFile, sentence_index: int) -> dict:
     sentences = audio_file.sentences or []
     if sentence_index < 0 or sentence_index >= len(sentences):
         raise HTTPException(status_code=404, detail="sentence not found")
     return sentences[sentence_index]
 
-
+# 更新句子字段
 def _update_sentence_field(db: Session, audio_file: AudioFile, sentence_index: int, **fields) -> None:
     sentences = [dict(s) for s in (audio_file.sentences or [])]
     sentences[sentence_index].update(fields)
     audio_file.sentences = sentences
     db.commit()
 
-
+# 切换句子掌握状态
 @router.post("/{audio_file_id}/sentence/{sentence_index}/master")
 async def toggle_master(
     audio_file_id: int,
@@ -229,7 +243,7 @@ async def toggle_master(
     _update_sentence_field(db, audio_file, sentence_index, mastered=new_val)
     return {"mastered": new_val}
 
-
+# 切换句子收藏状态
 @router.post("/{audio_file_id}/sentence/{sentence_index}/bookmark")
 async def toggle_bookmark(
     audio_file_id: int,
@@ -244,7 +258,7 @@ async def toggle_bookmark(
     _update_sentence_field(db, audio_file, sentence_index, bookmarked=new_val)
     return {"bookmarked": new_val}
 
-
+# 获取句子音素
 @router.get("/{audio_file_id}/sentence/{sentence_index}/phonemes", response_model=list[WordPhoneme])
 async def get_sentence_phonemes(
     audio_file_id: int,
@@ -267,7 +281,7 @@ async def get_sentence_phonemes(
     _update_sentence_field(db, audio_file, sentence_index, word_phonemes=[r.model_dump() for r in result])
     return result
 
-
+# 分析句子
 @router.post("/{audio_file_id}/sentence/{sentence_index}/analyze")
 async def analyze_sentence(
     audio_file_id: int,
@@ -288,7 +302,7 @@ async def analyze_sentence(
     _update_sentence_field(db, audio_file, sentence_index, analysis=analysis)
     return {"analysis": analysis}
 
-
+# 流式播放音频文件
 @router.get("/{audio_file_id}/stream")
 async def stream_audio_file(audio_file_id: int, db: Session = Depends(get_db)):
     audio_file = db.get(AudioFile, audio_file_id)
@@ -303,7 +317,7 @@ class AudioFileUpdate(BaseModel):
     title: str | None = None
     language: str | None = None
 
-
+# 更新音频文件
 @router.patch("/{audio_file_id}", response_model=AudioFileResponse)
 async def update_audio_file(
     audio_file_id: int,
@@ -321,7 +335,7 @@ async def update_audio_file(
     db.refresh(audio_file)
     return audio_file
 
-
+# 重新运行语音识别
 @router.post("/{audio_file_id}/asr", response_model=AudioFileResponse)
 async def rerun_asr(
     audio_file_id: int,
@@ -339,21 +353,25 @@ async def rerun_asr(
     db.refresh(audio_file)
     return audio_file
 
-
+# 删除音频文件
 @router.delete("/{audio_file_id}", status_code=204)
 async def delete_audio_file(
     audio_file_id: int,
     db: Session = Depends(get_db),
 ):
+    # 获取音频文件对象
     audio_file = db.get(AudioFile, audio_file_id)
     if audio_file is None:
         raise HTTPException(status_code=404, detail="audio file not found")
     storage = get_storage_service(audio_file.storage_backend)
     try:
+        # 删除音频文件
         storage.delete(audio_file.file_path)
     except Exception:
         pass
+    # 删除练习记录
     db.query(PracticeRecord).filter(PracticeRecord.audio_file_id == audio_file_id).delete()
+    # 删除音频文件对象
     db.delete(audio_file)
     db.commit()
 

@@ -21,7 +21,7 @@ SOURCE_LANG_NAMES = {
     "ja": "Japanese",
 }
 
-
+# Ollama 服务实现
 class OllamaLLMService(LLMService):
     def __init__(self, config: OllamaConfig):
         self.config = config

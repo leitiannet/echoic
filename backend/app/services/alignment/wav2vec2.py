@@ -23,9 +23,11 @@ _BUNDLE_REGISTRY = {
 # alignment model from HuggingFace on first use (~400 MB, then cached).
 _WHISPERX_LANGUAGES = {"ja", "ko", "fr", "de", "es", "it", "pt", "ru"}
 
-
+# 对齐服务实现
 class Wav2Vec2AlignmentService(AlignmentService):
+    # 初始化
     def __init__(self, config: Wav2Vec2AlignmentConfig):
+        # 保存配置
         self.config = config
 
         if config.language in _WHISPERX_LANGUAGES:
@@ -208,7 +210,7 @@ class Wav2Vec2AlignmentService(AlignmentService):
         return aligned_words
 
     # public entry point
-
+    # 对齐音频文件和参考文本
     def align(self, audio_path: str, reference_text: str) -> list[WordTimestamp]:
         if self._use_whisperx:
             return self._whisperx_align(audio_path, reference_text)

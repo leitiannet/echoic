@@ -11,32 +11,32 @@ from app.models.audio_file import AudioFile
 from app.models.practice_record import PracticeRecord
 from app.schemas.practice import HeatmapEntry
 
-
+# 最近练习记录
 class RecentPracticeEntry(BaseModel):
-    record_id: int
-    audio_file_id: int
-    audio_title: str
-    sentence_index: int
-    sentence_text: str
-    accuracy_score: float | None
-    created_at: datetime
+    record_id     : int           # 记录ID
+    audio_file_id : int           # 音频文件ID
+    audio_title   : str           # 音频文件标题
+    sentence_index: int           # 句子索引
+    sentence_text : str           # 句子文本
+    accuracy_score: float | None  # 准确率
+    created_at    : datetime      # 练习时间
 
-
+# 周期统计
 class PeriodStats(BaseModel):
-    count: int
-    avg_score: float | None
+    count    : int           # 练习次数
+    avg_score: float | None  # 平均分
 
-
+# 统计概览
 class SummaryStats(BaseModel):
-    today: PeriodStats
-    week: PeriodStats
-    total: PeriodStats
-    streak: int
+    today : PeriodStats  # 今天统计
+    week  : PeriodStats  # 本周统计
+    total : PeriodStats  # 全部统计
+    streak: int          # 连续天数
 
-
+# 统计路由（路由前缀：/api/stats ）
 router = APIRouter()
 
-
+# 计算加权平均分
 def _weighted_avg(db_avg):
     """Convert raw weighted average expression result to float or None."""
     return float(db_avg) if db_avg is not None else None
@@ -53,7 +53,7 @@ def _period_stats(db: Session, start: datetime | None) -> PeriodStats:
     count, avg = q.first()
     return PeriodStats(count=count or 0, avg_score=_weighted_avg(avg))
 
-
+# 获取统计概览
 @router.get("/summary", response_model=SummaryStats)
 async def get_summary(db: Session = Depends(get_db)):
     today = datetime.utcnow().date()
@@ -82,7 +82,7 @@ async def get_summary(db: Session = Depends(get_db)):
 
     return SummaryStats(today=today_stats, week=week_stats, total=total_stats, streak=streak)
 
-
+# 获取热力图
 @router.get("/heatmap", response_model=list[HeatmapEntry])
 async def get_heatmap(db: Session = Depends(get_db)):
     today = datetime.utcnow().date()
@@ -116,7 +116,7 @@ async def get_heatmap(db: Session = Depends(get_db)):
         for day in (start_date + timedelta(days=offset) for offset in range(365))
     ]
 
-
+# 获取最近练习记录
 @router.get("/recent", response_model=list[RecentPracticeEntry])
 async def get_recent_practices(limit: int = 20, db: Session = Depends(get_db)):
     rows = (

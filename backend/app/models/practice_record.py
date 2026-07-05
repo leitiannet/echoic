@@ -3,10 +3,11 @@ from sqlalchemy import Integer, String, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 
-
+# 跟读练习记录模型
 class PracticeRecord(Base):
+    # 表名
     __tablename__ = "practice_records"
-
+    # 字段
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # reserved
     audio_file_id: Mapped[int] = mapped_column(Integer, ForeignKey("audio_files.id"))

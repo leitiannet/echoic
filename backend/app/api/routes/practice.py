@@ -15,14 +15,15 @@ from app.services.factory import get_alignment_service, get_scoring_service, get
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
 
+# 跟读练习路由（路由前缀：/api/practice ）
 router = APIRouter()
 
-
+# 生成录音存储键
 def _recording_key(filename: str) -> str:
     suffix = Path(filename).suffix
     return f"recordings/{uuid4().hex}{suffix}"
 
-
+# 获取句子文本
 def _sentence_text(audio_file: AudioFile, sentence_index: int) -> str:
     sentences = audio_file.sentences or []
     if sentence_index < 0 or sentence_index >= len(sentences):
@@ -33,7 +34,7 @@ def _sentence_text(audio_file: AudioFile, sentence_index: int) -> str:
         raise HTTPException(status_code=404, detail="sentence not found")
     return text
 
-
+# 保存录音
 @router.post("/{audio_file_id}/sentence/{sentence_index}/save", response_model=PracticeRecordResponse)
 async def save_recording(
     audio_file_id: int,
@@ -63,7 +64,7 @@ async def save_recording(
     db.refresh(record)
     return record
 
-
+# 评分录音
 @router.post("/record/{record_id}/score", response_model=PracticeRecordResponse)
 async def score_recording(
     record_id: int,
@@ -89,7 +90,7 @@ async def score_recording(
     db.refresh(record)
     return record
 
-
+# 流式播放录音
 @router.get("/record/{record_id}/stream")
 async def stream_recording(record_id: int, db: Session = Depends(get_db)):
     record = db.get(PracticeRecord, record_id)
@@ -99,7 +100,7 @@ async def stream_recording(record_id: int, db: Session = Depends(get_db)):
     path = storage.get_absolute_path(record.recording_path)
     return FileResponse(path)
 
-
+# 删除录音
 @router.delete("/record/{record_id}", status_code=204)
 async def delete_recording(record_id: int, db: Session = Depends(get_db)):
     record = db.get(PracticeRecord, record_id)
@@ -113,7 +114,7 @@ async def delete_recording(record_id: int, db: Session = Depends(get_db)):
     db.delete(record)
     db.commit()
 
-
+# 历史记录
 @router.get("/{audio_file_id}/sentence/{sentence_index}/history", response_model=list[PracticeRecordResponse])
 async def get_sentence_history(
     audio_file_id: int,

@@ -3,10 +3,11 @@ from sqlalchemy import Integer, String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
-
+# 音频合集模型
 class Collection(Base):
+    # 表名
     __tablename__ = "collections"
-
+    # 字段
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

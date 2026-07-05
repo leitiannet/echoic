@@ -3,10 +3,11 @@ from sqlalchemy import Integer, String, DateTime, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
-
+# 音频文件模型
 class AudioFile(Base):
+    # 表名
     __tablename__ = "audio_files"
-
+    # 字段
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # reserved
     title: Mapped[str] = mapped_column(String)

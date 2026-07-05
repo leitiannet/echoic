@@ -3,7 +3,7 @@ from sqlalchemy import Integer, String, Float, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db import Base
 
-# 口语练习模型
+# 口语练习记录模型
 class OralAttempt(Base):
     # 表名
     __tablename__ = "oral_attempts"

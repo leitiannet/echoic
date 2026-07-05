@@ -93,7 +93,7 @@ async def _fetch_program(client: httpx.AsyncClient, program: dict) -> list[Galle
         logger.warning("Failed to fetch VOA program %s: %s", program["id"], e)
         return []
 
-
+# VOA 内容提供者
 class VOAProvider(ContentProvider):
     source = "voa"
     source_label = "VOA Learning English"

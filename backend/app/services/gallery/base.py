@@ -8,23 +8,23 @@ from pydantic import BaseModel
 
 ITUNES_NS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
 
-
+# 单期/单集内容
 class GalleryEpisode(BaseModel):
-    title: str
-    description: str
-    audio_url: str
-    pub_date: str
-    duration: str | None
-    program: str
-    program_id: str
-    level: str
-    source: str
-    source_label: str
+    title: str              # 标题
+    description: str        # 描述
+    audio_url: str          # 音频 URL（导入时的下载地址）
+    pub_date: str           # 发布日期
+    duration: str | None    # 时长
+    program: str            # 节目名称
+    program_id: str         # 节目 ID
+    level: str              # 难度
+    source: str             # 来源
+    source_label: str       # 来源标签
 
-
+# 内容提供者
 class ContentProvider(ABC):
-    source: str
-    source_label: str
+    source: str             # 来源
+    source_label: str       # 来源标签
 
     @abstractmethod
     async def fetch(self) -> list[GalleryEpisode]: ...
