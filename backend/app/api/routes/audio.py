@@ -26,7 +26,7 @@ from app.services.storage.base import StorageService
 # 音频素材路由（路由前缀：/api/audio ）
 router = APIRouter()
 
-# 下载远程音频 URL
+# 下载远程音频链接
 async def _download_url(url: str) -> bytes:
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; Echoic/1.0)",
@@ -120,7 +120,7 @@ async def upload_audio(
         collection_id=collection_id,
     )
 
-# 导入远程音频 URL
+# 导入远程音频链接
 @router.post("/from-url")
 async def import_from_url(
     payload: AudioFileCreate,
@@ -139,7 +139,7 @@ async def import_from_url(
         try:
             yield event({"step": "downloading"})
             try:
-                # 下载远程音频 URL
+                # 下载远程音频链接
                 audio_bytes = await _download_url(payload.url)
             except httpx.HTTPError as e:
                 yield event({"step": "error", "message": str(e)})

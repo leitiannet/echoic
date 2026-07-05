@@ -12,7 +12,7 @@ ITUNES_NS = "http://www.itunes.com/dtds/podcast-1.0.dtd"
 class GalleryEpisode(BaseModel):
     title: str              # 标题
     description: str        # 描述
-    audio_url: str          # 音频 URL（导入时的下载地址）
+    audio_url: str          # 音频链接（导入时的下载地址）
     pub_date: str           # 发布日期
     duration: str | None    # 时长
     program: str            # 节目名称

@@ -1,7 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Float, DateTime, JSON
+from sqlalchemy import Integer, String, Float, JSON
 from sqlalchemy.orm import Mapped, mapped_column
-from app.db import Base
+from app.db import Base, UTCDateTime
 
 # 口语练习记录模型
 class OralAttempt(Base):
@@ -28,4 +28,4 @@ class OralAttempt(Base):
     llm_highlights: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # User settings snapshot
     timer_secs: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=datetime.utcnow)

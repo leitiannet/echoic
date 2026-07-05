@@ -1,7 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, Float, DateTime, JSON, ForeignKey
+from sqlalchemy import Integer, String, Float, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-from app.db import Base
+from app.db import Base, UTCDateTime
 
 # 跟读练习记录模型
 class PracticeRecord(Base):
@@ -22,4 +22,4 @@ class PracticeRecord(Base):
     completeness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     # Word-level details for highlight feedback
     word_scores: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=datetime.utcnow)

@@ -30,7 +30,7 @@ class PeriodStats(BaseModel):
 class SummaryStats(BaseModel):
     today : PeriodStats  # 今天统计
     week  : PeriodStats  # 本周统计
-    total : PeriodStats  # 全部统计
+    total : PeriodStats  # 累计统计
     streak: int          # 连续天数
 
 # 统计路由（路由前缀：/api/stats ）

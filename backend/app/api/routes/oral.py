@@ -23,7 +23,10 @@ from app.services.storage.base import StorageService
 # 口语练习路由（路由前缀：/api/oral ）
 router = APIRouter()
 
+# 题目类型：朗读、情景提问、话题演讲
 QUESTION_TYPES = {"read_aloud", "situational", "monologue"}
+
+# 题目难度：初级、中级、高级
 DIFFICULTIES = {"beginner", "intermediate", "advanced"}
 
 # 生成录音文件名

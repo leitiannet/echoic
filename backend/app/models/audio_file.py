@@ -1,7 +1,7 @@
 from datetime import datetime
-from sqlalchemy import Integer, String, DateTime, JSON, ForeignKey
+from sqlalchemy import Integer, String, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.db import Base
+from app.db import Base, UTCDateTime
 
 # 音频文件模型
 class AudioFile(Base):
@@ -19,6 +19,6 @@ class AudioFile(Base):
     file_path: Mapped[str] = mapped_column(String)
     # ASR result: list of {text, start, end, words: [{word, start, end}]}
     sentences: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=datetime.utcnow)
 
     collection = relationship("Collection", back_populates="audio_files")
