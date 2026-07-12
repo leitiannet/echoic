@@ -59,6 +59,7 @@ export default function AudioUpload({ onSuccess, collections = [] } = {}) {
   const STEP_LABELS = {
     downloading: t('upload.stepDownloading'),
     saving: t('upload.stepSaving'),
+    converting: t('upload.stepConverting'),
     compressing: t('upload.stepCompressing'),
     transcribing: t('upload.stepTranscribing'),
   }
@@ -134,7 +135,7 @@ export default function AudioUpload({ onSuccess, collections = [] } = {}) {
               <input
                 ref={inputRef}
                 type="file"
-                accept="audio/*"
+                accept="audio/*,video/*,.pdf,application/pdf"
                 className="hidden"
                 onChange={(e) => setFile(e.target.files[0] ?? null)}
               />

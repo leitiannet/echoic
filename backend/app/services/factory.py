@@ -5,6 +5,8 @@ from app.services.alignment.base import AlignmentService
 from app.services.llm.base import LLMService
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
+from app.services.tts.base import TTSService
+from app.services.media.base import MediaService
 
 # 获取语音识别服务
 @lru_cache(maxsize=None)
@@ -66,6 +68,32 @@ def get_llm_service() -> LLMService:
             return OllamaLLMService(settings.llm.ollama)
         case _:
             raise ValueError(f"Unknown LLM backend: {settings.llm.backend}")
+
+# 获取语音合成服务
+@lru_cache
+def get_tts_service() -> TTSService:
+    match settings.tts.backend:
+        case "espeak":
+            from app.services.tts.espeak import EspeakTTSService
+            return EspeakTTSService(settings.tts.espeak)
+        case "edge-tts":
+            from app.services.tts.edge_tts import EdgeTTSService
+            return EdgeTTSService(settings.tts.edge_tts)
+        case "pyttsx4":
+            from app.services.tts.pyttsx4 import Pyttsx4TTSService
+            return Pyttsx4TTSService(settings.tts.pyttsx4)
+        case _:
+            raise ValueError(f"Unknown TTS backend: {settings.tts.backend}")
+
+# 获取媒体服务
+@lru_cache
+def get_media_service() -> MediaService:
+    match settings.media.backend:
+        case "local":
+            from app.services.media.local import LocalMediaService
+            return LocalMediaService(settings.media.local)
+        case _:
+            raise ValueError(f"Unknown media backend: {settings.media.backend}")
 
 # 获取存储服务
 @lru_cache

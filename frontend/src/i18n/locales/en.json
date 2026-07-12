@@ -123,6 +123,7 @@
     "failedGeneric": "Operation failed",
     "stepDownloading": "Downloading audio…",
     "stepSaving": "Processing audio…",
+    "stepConverting": "Converting file…",
     "stepCompressing": "Compressing audio…",
     "stepTranscribing": "Transcribing speech… (may take a few minutes for long audio)"
   },

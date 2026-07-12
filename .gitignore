@@ -15,3 +15,7 @@ frontend/dist/
 docker-compose.override.yml
 *.pyc
 .zed
+.specstory/
+.vscode/
+backend/_*.txt
+.cursorindexingignore

@@ -1,7 +1,5 @@
 import asyncio
 import json
-import subprocess
-import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -22,12 +20,15 @@ from app.services.factory import get_asr_service, get_llm_service, get_scoring_s
 from app.services.llm.base import LLMService
 from app.services.scoring.base import ScoringService
 from app.services.storage.base import StorageService
+from app.services.factory import get_media_service, get_tts_service
+from app.services.media.base import MediaError, MediaService
+from app.services.tts.base import TTSError, TTSService
 
 # 音频素材路由（路由前缀：/api/audio ）
 router = APIRouter()
 
-# 下载远程音频链接
-async def _download_url(url: str) -> bytes:
+# 下载远程音频链接，返回 (内容, Content-Type)
+async def _download_url(url: str) -> tuple[bytes, str | None]:
     headers = {
         "User-Agent": "Mozilla/5.0 (compatible; Echoic/1.0)",
         "Accept": "*/*",
@@ -38,31 +39,56 @@ async def _download_url(url: str) -> bytes:
     async with httpx.AsyncClient(follow_redirects=True, timeout=300.0, headers=headers) as client:
         async with client.stream("GET", url) as response:
             response.raise_for_status()
-            return await response.aread()
+            raw_type = response.headers.get("content-type")
+            content_type = raw_type.split(";")[0].strip().lower() if raw_type else None
+            return await response.aread(), content_type
 
 # 生成音频文件存储键（使用 uuid4 生成唯一标识，并添加后缀）
-def _audio_key(filename: str, *, compressed: bool = False) -> str:
-    suffix = ".mp3" if compressed else Path(filename).suffix
-    return f"audio/{uuid4().hex}{suffix}"
+def _audio_key(filename: str, *, compressed: bool = False, suffix: str | None = None) -> str:
+    if compressed:
+        ext = ".mp3"
+    elif suffix is not None:
+        ext = suffix
+    else:
+        ext = Path(filename).suffix
+    return f"audio/{uuid4().hex}{ext}"
 
 # 压缩音频文件（使用 ffmpeg 压缩为 64 kbps mono MP3 ，删除原始文件）
-def _compress_audio(storage: "StorageService", key: str) -> str:
+def _compress_audio(storage: StorageService, media: MediaService, key: str) -> str:
     """Re-encode stored file as 64 kbps mono MP3. Returns new key."""
     src = storage.get_absolute_path(key)
     new_key = _audio_key("compressed.mp3", compressed=True)
     dst = storage.get_absolute_path(new_key)
-    # 使用 ffmpeg 重编码
-    subprocess.run(
-        ["ffmpeg", "-y", "-i", str(src), "-ac", "1", "-ab", "64k", str(dst)],
-        check=True,
-        capture_output=True,
-    )
+    media.compress_audio(src, dst)
     try:
         # 删除原始文件
         storage.delete(key)
     except Exception:
         pass
     return new_key
+
+# 转换为音频文件
+def _convert_to_audio(
+    storage: StorageService,
+    media: MediaService,
+    tts: TTSService,
+    key: str,
+    *,
+    kind: str,
+    language: str,
+) -> str:
+    src = storage.get_absolute_path(key)
+    if kind == "video":
+        new_key = _audio_key("extracted.wav")
+        media.extract_audio(src, storage.get_absolute_path(new_key))
+        return new_key
+    if kind == "pdf":
+        text = media.extract_text(src, kind=kind)
+        suffix = ".mp3" if settings.tts.backend == "edge-tts" else ".wav"
+        new_key = _audio_key("tts", suffix=suffix)
+        tts.synthesize(text, storage.get_absolute_path(new_key), language=language)
+        return new_key
+    return key
 
 # 持久化音频文件
 def _persist_audio_file(
@@ -98,21 +124,47 @@ async def upload_audio(
     db: Session = Depends(get_db),
     asr: ASRService = Depends(get_asr_service),
     storage: StorageService = Depends(get_storage_service),
+    media: MediaService = Depends(get_media_service),
+    tts: TTSService = Depends(get_tts_service),
 ):
+    filename = file.filename or "upload.bin"
     # 生成音频文件存储键
-    key = _audio_key(file.filename or "upload.bin")
-    # 保存音频文件
+    key = _audio_key(filename)
+    # 保存音频文件 // 原始文件存储
     storage.save(await file.read(), key)
+    # 其他格式文件转为音频文件
+    kind = media.media_kind(filename, file.content_type)
+    if kind != "audio":
+        original_key = key
+        try:
+            key = await asyncio.to_thread(
+                _convert_to_audio, storage, media, tts, key,
+                kind=kind,
+                language=settings.asr.whisperx.language,
+            )
+        except (MediaError, TTSError) as e:
+            try:
+                storage.delete(key)
+            except Exception:
+                pass
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        try:
+            storage.delete(original_key)
+        except Exception:
+            pass
     # 识别音频文件
-    sentences = asr.transcribe(storage.get_absolute_path(key))
-    # 压缩音频文件
+    sentences = await asyncio.to_thread(asr.transcribe, storage.get_absolute_path(key))
+    # 压缩音频文件（先用原始音频做识别，再按需压缩）
     if compress:
-        key = _compress_audio(storage, key)
+        try:
+            key = await asyncio.to_thread(_compress_audio, storage, media, key)
+        except MediaError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     title = Path(file.filename or "upload").stem or "upload"
     # 持久化音频文件
     return _persist_audio_file(
         db,
-        title=title,
+        title=title, # 原始文件名作为标题
         source_type="upload", # 上传类型
         key=key,
         sentences=sentences,
@@ -128,6 +180,8 @@ async def import_from_url(
     db: Session = Depends(get_db),
     asr: ASRService = Depends(get_asr_service),
     storage: StorageService = Depends(get_storage_service),
+    media: MediaService = Depends(get_media_service),
+    tts: TTSService = Depends(get_tts_service),
 ):
     if not payload.url:
         raise HTTPException(status_code=400, detail="url is required")
@@ -140,7 +194,7 @@ async def import_from_url(
             yield event({"step": "downloading"})
             try:
                 # 下载远程音频链接
-                audio_bytes = await _download_url(payload.url)
+                audio_bytes, content_type = await _download_url(payload.url)
             except httpx.HTTPError as e:
                 yield event({"step": "error", "message": str(e)})
                 return
@@ -148,15 +202,41 @@ async def import_from_url(
             yield event({"step": "saving"})
             filename = Path(urlparse(payload.url).path).name or "imported.mp3"
             key = _audio_key(filename)
-            # 保存音频文件
+            # 保存音频文件 // 原始文件存储
             storage.save(audio_bytes, key)
-            # 压缩音频文件
-            if compress:
-                yield event({"step": "compressing"})
-                key = await asyncio.to_thread(_compress_audio, storage, key)
+            kind = media.media_kind(filename, content_type)
+            if kind != "audio":
+                yield event({"step": "converting"})
+                original_key = key
+                try:
+                    key = await asyncio.to_thread(
+                        _convert_to_audio, storage, media, tts, key,
+                        kind=kind,
+                        language=settings.asr.whisperx.language,
+                    )
+                except (MediaError, TTSError) as e:
+                    try:
+                        storage.delete(key)
+                    except Exception:
+                        pass
+                    yield event({"step": "error", "message": str(e)})
+                    return
+                try:
+                    storage.delete(original_key)
+                except Exception:
+                    pass
 
             yield event({"step": "transcribing"})
             sentences = await asyncio.to_thread(asr.transcribe, storage.get_absolute_path(key))
+
+            # 压缩音频文件（先识别，再按需压缩）
+            if compress:
+                yield event({"step": "compressing"})
+                try:
+                    key = await asyncio.to_thread(_compress_audio, storage, media, key)
+                except MediaError as e:
+                    yield event({"step": "error", "message": str(e)})
+                    return
 
             title = payload.title or Path(filename).stem or urlparse(payload.url).hostname or "imported"
             audio_file = _persist_audio_file(

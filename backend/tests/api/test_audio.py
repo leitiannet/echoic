@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+import json
 
 import httpx
 import pytest
@@ -61,6 +62,16 @@ def _client(db, storage, asr):
         app.dependency_overrides.clear()
 
 
+def _sse_done_result(text: str) -> dict:
+    for line in text.splitlines():
+        if not line.startswith("data: "):
+            continue
+        payload = json.loads(line[6:])
+        if payload.get("step") == "done":
+            return payload["result"]
+    raise AssertionError("SSE stream missing done event")
+
+
 def test_upload_audio_persists_record_and_transcription(db):
     storage = MockStorageService()
     asr = MockASRService()
@@ -88,8 +99,8 @@ def test_import_from_url_downloads_transcribes_and_persists(db, monkeypatch):
     storage = MockStorageService()
     asr = MockASRService()
 
-    async def fake_download(url: str) -> bytes:
-        return b"downloaded-audio"
+    async def fake_download(url: str) -> tuple[bytes, str | None]:
+        return b"downloaded-audio", None
 
     monkeypatch.setattr("app.api.routes.audio._download_url", fake_download)
 
@@ -104,7 +115,7 @@ def test_import_from_url_downloads_transcribes_and_persists(db, monkeypatch):
         )
 
     assert response.status_code == 200
-    body = response.json()
+    body = _sse_done_result(response.text)
     assert body["title"] == "Remote lesson"
     assert storage.saved[0][1] == b"downloaded-audio"
     assert asr.paths == [f"/tmp/{storage.saved[0][0]}"]

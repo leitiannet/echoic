@@ -69,6 +69,7 @@
     "failedGeneric": "操作に失敗しました",
     "stepDownloading": "音声をダウンロード中…",
     "stepSaving": "音声を処理中…",
+    "stepConverting": "ファイルを変換中…",
     "stepCompressing": "音声を圧縮中…",
     "stepTranscribing": "音声を文字起こし中…（長い音声は数分かかる場合があります）"
   },

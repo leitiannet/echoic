@@ -70,6 +70,7 @@
     "failedGeneric": "Vorgang fehlgeschlagen",
     "stepDownloading": "Audio wird heruntergeladen…",
     "stepSaving": "Audio wird verarbeitet…",
+    "stepConverting": "Datei wird konvertiert…",
     "stepCompressing": "Audio wird komprimiert…",
     "stepTranscribing": "Sprache wird transkribiert… (kann bei langen Audios einige Minuten dauern)"
   },

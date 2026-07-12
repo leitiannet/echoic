@@ -69,6 +69,7 @@
     "failedGeneric": "작업에 실패했습니다",
     "stepDownloading": "오디오 다운로드 중…",
     "stepSaving": "오디오 처리 중…",
+    "stepConverting": "파일 변환 중…",
     "stepCompressing": "오디오 압축 중…",
     "stepTranscribing": "음성 변환 중… (긴 오디오는 몇 분 걸릴 수 있습니다)"
   },

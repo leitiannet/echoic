@@ -69,6 +69,44 @@ class LLMConfig(BaseModel):
     ollama: OllamaConfig = OllamaConfig()
 
 
+# ── Media ─────────────────────────────────────────────────────────────────────
+
+class LocalMediaConfig(BaseModel):
+    pass
+
+
+class MediaConfig(BaseModel):
+    backend: str = "local"        # local | (future: api …)
+    local: LocalMediaConfig = LocalMediaConfig()
+
+
+# ── TTS ───────────────────────────────────────────────────────────────────────
+
+class EspeakTTSConfig(BaseModel):
+    voices: dict[str, str] = {"en": "en-us", "fr": "fr", "de": "de", "ja": "ja"}
+
+
+class EdgeTTSConfig(BaseModel):
+    voices: dict[str, str] = {
+        "en": "en-US-JennyNeural",
+        "fr": "fr-FR-DeniseNeural",
+        "de": "de-DE-KatjaNeural",
+        "ja": "ja-JP-NanamiNeural",
+    }
+
+
+class Pyttsx4TTSConfig(BaseModel):
+    engine: str = ""              # sapi5 | nsss | espeak | coqui_ai_tts; empty = auto
+    voices: dict[str, str] = {}
+
+
+class TTSConfig(BaseModel):
+    backend: str = "edge-tts"     # espeak | edge-tts | pyttsx4
+    espeak: EspeakTTSConfig = EspeakTTSConfig()
+    edge_tts: EdgeTTSConfig = EdgeTTSConfig()
+    pyttsx4: Pyttsx4TTSConfig = Pyttsx4TTSConfig()
+
+
 # ── Storage ───────────────────────────────────────────────────────────────────
 
 class StorageConfig(BaseModel):
@@ -95,6 +133,8 @@ class Settings(BaseSettings):
     asr: ASRConfig = ASRConfig()
     alignment: AlignmentConfig = AlignmentConfig()
     scoring: ScoringConfig = ScoringConfig()
+    media: MediaConfig = MediaConfig()
+    tts: TTSConfig = TTSConfig()
     storage: StorageConfig = StorageConfig()
     llm: LLMConfig = LLMConfig()
 
