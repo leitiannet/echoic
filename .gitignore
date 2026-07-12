@@ -36,3 +36,6 @@ backend/_*.txt
 *.webm
 *.flv
 *.wmv
+
+# Test files
+tool/echoic_test_files/
