@@ -38,4 +38,4 @@ backend/_*.txt
 *.wmv
 
 # Test files
-tool/echoic_test_files/
+devtools/echoic_test_files/
