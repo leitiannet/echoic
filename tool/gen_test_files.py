@@ -160,7 +160,7 @@ def write_test_html() -> Path:
 
 
 def write_test_htm() -> Path:
-    path = OUT_DIR / "test.htm"
+    path = OUT_DIR / "test_htm.htm"
     path.write_text(_build_html(), encoding="utf-8")
     return path
 
