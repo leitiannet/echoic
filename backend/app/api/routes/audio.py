@@ -67,6 +67,9 @@ def _compress_audio(storage: StorageService, media: MediaService, key: str) -> s
         pass
     return new_key
 
+# 需提取文字再 TTS 的素材类型
+_TEXT_KINDS = frozenset({"pdf", "text", "md", "html", "docx", "image"})
+
 # 转换为音频文件
 def _convert_to_audio(
     storage: StorageService,
@@ -82,8 +85,8 @@ def _convert_to_audio(
         new_key = _audio_key("extracted.wav")
         media.extract_audio(src, storage.get_absolute_path(new_key))
         return new_key
-    if kind == "pdf":
-        text = media.extract_text(src, kind=kind)
+    if kind in _TEXT_KINDS:
+        text = media.extract_text(src, kind=kind, language=language)
         suffix = ".mp3" if settings.tts.backend == "edge-tts" else ".wav"
         new_key = _audio_key("tts", suffix=suffix)
         tts.synthesize(text, storage.get_absolute_path(new_key), language=language)

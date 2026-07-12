@@ -8,14 +8,14 @@ class MediaError(Exception):
 class MediaService(ABC):
     @abstractmethod
     def media_kind(self, filename: str, content_type: str | None = None) -> str:
-        """Return 'audio', 'video', or 'pdf'."""
+        """Return 'audio', 'video', 'pdf', 'text', 'md', 'html', 'docx', or 'image'."""
 
     @abstractmethod
     def extract_audio(self, src_path: str, dst_path: str) -> None:
         """Extract audio track from a video file."""
 
     @abstractmethod
-    def extract_text(self, src_path: str, *, kind: str) -> str:
+    def extract_text(self, src_path: str, *, kind: str, language: str = "en") -> str:
         """Extract text from a document file (pdf, word, …)."""
 
     @abstractmethod

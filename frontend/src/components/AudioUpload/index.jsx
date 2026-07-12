@@ -135,7 +135,7 @@ export default function AudioUpload({ onSuccess, collections = [] } = {}) {
               <input
                 ref={inputRef}
                 type="file"
-                accept="audio/*,video/*,.pdf,application/pdf"
+                accept="audio/*,video/*,image/*,.pdf,.txt,.md,.html,.htm,.docx,application/pdf,text/html"
                 className="hidden"
                 onChange={(e) => setFile(e.target.files[0] ?? null)}
               />
