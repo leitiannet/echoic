@@ -6,6 +6,11 @@ from app.schemas.audio import Sentence, WordTimestamp
 from app.services.asr.base import ASRService
 
 _SENTENCE_END = re.compile(r'[.?!]["\'»]?\s*$')
+# 首字母词/缩写词（Dr., Mr.）
+_ABBREV = re.compile(
+    r'^(?:[A-Z]\.)+[A-Z]?\.?$'
+    r'|^[A-Z][a-z]{1,4}\.$'
+)
 _PAD = 0.15  # seconds of silence to keep before/after each sentence
 
 # 语音识别服务实现，实际使用 faster-whisper 库（基于 CTranslate2 加速）
@@ -87,8 +92,14 @@ class WhisperXASRService(ASRService):
 
                 word_text = str(word.get("word", "")).strip()
                 is_last_in_seg = (i == n - 1)
+                at_sentence_end = bool(_SENTENCE_END.search(word_text))
+                abbrev_mid_sentence = (
+                    at_sentence_end
+                    and bool(_ABBREV.match(word_text))
+                    and len(buf_words) < min_words
+                )
                 should_flush = (
-                    bool(_SENTENCE_END.search(word_text)) and len(buf_words) >= min_words
+                    at_sentence_end and not abbrev_mid_sentence
                 ) or len(buf_words) >= max_words
 
                 if should_flush:
